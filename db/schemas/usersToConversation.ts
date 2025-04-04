@@ -6,7 +6,7 @@ import { user } from "./auth-schema";
 export const usersToConversation = pgTable(
   "usersToConversation",
   {
-    memberId: uuid().references(() => user.id, { onDelete: "cascade" }),
+    memberId: uuid().references(() => user.id),
     conversationId: uuid().references(() => conversation.id, {
       onDelete: "cascade",
     }),

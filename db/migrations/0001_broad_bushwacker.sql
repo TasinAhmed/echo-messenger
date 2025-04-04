@@ -1,0 +1,1 @@
+ALTER TABLE "conversation" RENAME COLUMN "picture_url" TO "image";

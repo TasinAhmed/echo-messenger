@@ -7,7 +7,7 @@ const Login = () => {
   const signIn = async () =>
     await authClient.signIn.email(
       {
-        email: "atasin1998@gmail.com",
+        email: "anais14@hotmail.com",
         password: "tasin123",
       },
       {

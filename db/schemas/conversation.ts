@@ -8,12 +8,12 @@ export const typeEnum = pgEnum("type", ["PRIVATE", "GROUP"]);
 export const conversation = pgTable("conversation", {
   id: uuid().defaultRandom().primaryKey(),
   name: text().notNull(),
-  pictureUrl: text().notNull(),
+  image: text().notNull(),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
 });
 
 export const conversationsRelations = relations(conversation, ({ many }) => ({
   messages: many(message),
-  usersToConversations: many(usersToConversation),
+  members: many(usersToConversation),
 }));
