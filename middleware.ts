@@ -3,11 +3,18 @@ import { getSessionCookie } from "better-auth/cookies";
 
 export async function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
+  const { pathname } = request.nextUrl;
 
-  console.log(sessionCookie, "session");
+  console.log("testing");
 
-  if (!sessionCookie) {
+  const authRegex = /^\/auth\/(login|register)(\/.*)?$/;
+
+  if (!sessionCookie && !authRegex.test(pathname)) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
+
+  if (sessionCookie && authRegex.test(pathname)) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();
@@ -15,6 +22,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|auth/login|auth/register).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
   ], // Specify the routes the middleware applies to
 };
