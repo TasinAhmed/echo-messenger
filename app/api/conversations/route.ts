@@ -2,20 +2,22 @@ import { db } from "@/db";
 import { auth } from "@/utils/auth";
 import { headers } from "next/headers";
 
+export interface CustomConvoUser {
+  name: string;
+  id: string;
+  image: string;
+  email: string;
+}
+
 export interface CustomConvoType {
   name: string;
   id: string;
   image: string;
   members: {
-    conversationId: string | null;
-    memberId: string | null;
+    conversationId: string;
+    memberId: string;
     joinedAt: Date;
-    user: {
-      name: string;
-      id: string;
-      image: string | null;
-      email: string;
-    } | null;
+    user: CustomConvoUser;
   }[];
 }
 

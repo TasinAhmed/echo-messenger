@@ -2,9 +2,10 @@ import clsx from "clsx";
 import Chat from "./Chat";
 import Conversations from "./Conversations";
 import { useBearStore } from "@/hooks/useBearStore";
+import Image from "next/image";
 
 const Main = () => {
-  const openDetails = useBearStore((state) => state.openDetails);
+  const { openDetails, selectedConvo } = useBearStore((state) => state);
 
   return (
     <div
@@ -16,7 +17,24 @@ const Main = () => {
       )}
     >
       <Conversations />
-      <Chat />
+      {selectedConvo ? (
+        <Chat />
+      ) : (
+        <div className="flex justify-center items-center">
+          <div className="flex flex-col items-center gap-y-8">
+            <Image
+              src="/select-conversation.svg"
+              alt="Select conversation image"
+              width={300}
+              height={200}
+              className="opacity-30"
+            />
+            <div className="text-gray-500 font-bold">
+              To begin, create or select conversation.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

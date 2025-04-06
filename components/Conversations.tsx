@@ -5,13 +5,48 @@ import { faker } from "@faker-js/faker";
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+
+const useConversations = () => {
+  const fetchUserConversations = async (): Promise<CustomConvoType[]> => {
+    const response = await http({ path: "/conversations", method: "GET" });
+
+    return await response?.json();
+  };
+
+  const [convoMap, setConvoMap] = useState<Map<string, CustomConvoType>>(
+    new Map()
+  );
+  const { data } = useQuery({
+    queryKey: ["conversations"],
+    queryFn: fetchUserConversations,
+  });
+
+  useEffect(() => {
+    if (!data) return;
+
+    setConvoMap(new Map(data.map((convo) => [convo.id, convo])));
+  }, [data]);
+
+  const convoValues = useMemo(() => {
+    console.log("convo values");
+
+    return [...convoMap.values()];
+  }, [convoMap]);
+
+  return { convoValues };
+};
 
 const ConversationItem = ({ data }: { data: CustomConvoType }) => {
   const { selectedConvo, setSelectedConvo } = useBearStore((state) => state);
 
   return (
     <div
-      onClick={() => setSelectedConvo(data)}
+      onClick={() => {
+        if (selectedConvo?.id !== data.id) {
+          setSelectedConvo(data);
+        }
+      }}
       className={clsx(
         "rounded-2xl p-4 cursor-pointer grid grid-cols-[auto_1fr] min-w-0 gap-x-4",
         selectedConvo?.id === data.id && "bg-secondary"
@@ -40,24 +75,15 @@ const ConversationItem = ({ data }: { data: CustomConvoType }) => {
   );
 };
 
-const fetchUserConversations = async (): Promise<CustomConvoType[]> => {
-  const response = await http({ path: "/conversations", method: "GET" });
-
-  return await response?.json();
-};
-
 const Conversations = () => {
-  const { data } = useQuery({
-    queryKey: ["conversations"],
-    queryFn: fetchUserConversations,
-  });
+  const { convoValues } = useConversations();
 
   return (
     <div className="p-8 w-115 grid grid-rows-[auto_1fr]">
       <div className="bg-secondary h-15 rounded-2xl mb-4"></div>
       <div className="h-full max-h-full overflow-y-auto relative overflow-x-hidden">
         <div className="grid gap-y-2 absolute h-full w-full left-0 top-0 min-h-0 min-w-0">
-          {data?.map((convo) => (
+          {convoValues.map((convo) => (
             <ConversationItem key={convo.id} data={convo} />
           ))}
         </div>
