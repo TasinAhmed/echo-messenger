@@ -8,7 +8,7 @@ interface BearState {
   setSelectedConvo: (convo: CustomConvoType) => void;
 }
 
-export const useBearStore = create<BearState>((set) => ({
+export const useMainStore = create<BearState>((set) => ({
   openDetails: true,
   toggleOpenDetails: () =>
     set((state) => ({ openDetails: !state.openDetails })),

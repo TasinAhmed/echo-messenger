@@ -1,11 +1,11 @@
 import clsx from "clsx";
 import Chat from "./Chat";
 import Conversations from "./Conversations";
-import { useBearStore } from "@/hooks/useBearStore";
+import { useMainStore } from "@/hooks/useMainStore";
 import Image from "next/image";
 
 const Main = () => {
-  const { openDetails, selectedConvo } = useBearStore((state) => state);
+  const { openDetails, selectedConvo } = useMainStore((state) => state);
 
   return (
     <div

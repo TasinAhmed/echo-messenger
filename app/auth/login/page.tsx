@@ -1,9 +1,10 @@
 "use client";
 import { authClient } from "@/utils/auth-client";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
 const Login = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState<{ email: string; password: string }>(
     {
       email: "",
@@ -19,7 +20,7 @@ const Login = () => {
       },
       {
         onSuccess: () => {
-          redirect("/");
+          router.push("/");
         },
       }
     );

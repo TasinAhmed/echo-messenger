@@ -1,8 +1,8 @@
-import { useBearStore } from "@/hooks/useBearStore";
+import { useMainStore } from "@/hooks/useMainStore";
 import clsx from "clsx";
 
 const ChatDetails = () => {
-  const openDetails = useBearStore((state) => state.openDetails);
+  const openDetails = useMainStore((state) => state.openDetails);
 
   return (
     <div className={clsx("p-8", openDetails ? "block" : "hidden")}>

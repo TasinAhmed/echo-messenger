@@ -1,13 +1,15 @@
+"use client";
 import { authClient } from "@/utils/auth-client";
 import clsx from "clsx";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const NavbarItem = ({ className }: { className?: string }) => {
+  const router = useRouter();
   const signOut = async () => {
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
-          redirect("/auth/login");
+          router.push("/auth/login");
         },
       },
     });

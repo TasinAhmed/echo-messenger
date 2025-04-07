@@ -1,5 +1,5 @@
 import { CustomConvoType } from "@/app/api/conversations/route";
-import { useBearStore } from "@/hooks/useBearStore";
+import { useMainStore } from "@/hooks/useMainStore";
 import { http } from "@/utils/http";
 import { faker } from "@faker-js/faker";
 import { useQuery } from "@tanstack/react-query";
@@ -29,8 +29,6 @@ const useConversations = () => {
   }, [data]);
 
   const convoValues = useMemo(() => {
-    console.log("convo values");
-
     return [...convoMap.values()];
   }, [convoMap]);
 
@@ -38,7 +36,7 @@ const useConversations = () => {
 };
 
 const ConversationItem = ({ data }: { data: CustomConvoType }) => {
-  const { selectedConvo, setSelectedConvo } = useBearStore((state) => state);
+  const { selectedConvo, setSelectedConvo } = useMainStore((state) => state);
 
   return (
     <div
@@ -54,10 +52,16 @@ const ConversationItem = ({ data }: { data: CustomConvoType }) => {
     >
       <div className="w-15 h-15 relative rounded-xl overflow-hidden">
         <Image
-          src={data.image}
+          src="/profile.png"
           alt="Conversation image"
-          layout="fill"
-          objectFit="cover"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+          }}
+          width={100}
+          height={100}
         />
       </div>
       <div className="whitespace-nowrap overflow-hidden overflow-ellipsis">

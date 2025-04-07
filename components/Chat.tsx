@@ -1,6 +1,6 @@
 import { CustomConvoUser } from "@/app/api/conversations/route";
 import { message } from "@/db/schemas";
-import { useBearStore } from "@/hooks/useBearStore";
+import { useMainStore } from "@/hooks/useMainStore";
 import { authClient } from "@/utils/auth-client";
 import { http } from "@/utils/http";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -58,7 +58,7 @@ const useMessages = () => {
   const [msgMap, setMsgMap] = useState<Map<string, Message>>(new Map());
   const [input, setInput] = useState("");
   const { data: session } = authClient.useSession();
-  const { selectedConvo } = useBearStore((state) => state);
+  const { selectedConvo } = useMainStore((state) => state);
   const users = new Map(
     selectedConvo?.members.map((m) => [m.memberId, m.user])
   );
@@ -128,14 +128,15 @@ const Button = ({
 
 const Header = () => {
   const BUTTON_SIZE = 20;
-  const { openDetails, toggleOpenDetails } = useBearStore((state) => state);
-  const convo = useBearStore((state) => state.selectedConvo);
+  const { openDetails, toggleOpenDetails, selectedConvo } = useMainStore(
+    (state) => state
+  );
 
   return (
     <div className="py-4 flex justify-between items-center">
       <div>
-        <div className="text-2xl font-bold">{convo?.name}</div>
-        <div>{convo?.members.length} members</div>
+        <div className="text-2xl font-bold">{selectedConvo?.name}</div>
+        <div>{selectedConvo?.members.length} members</div>
       </div>
       <div className="flex gap-x-2 items-center">
         <Button selected={openDetails} onClick={toggleOpenDetails}>
@@ -181,11 +182,16 @@ const Message = ({
         {isNew && (
           <div className=" absolute top-0 left-0 overflow-hidden">
             <Image
-              src={user?.image}
+              src="/profile.png"
               alt="Conversation image"
-              objectFit="cover"
-              width={56}
-              height={56}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center",
+              }}
+              width={100}
+              height={100}
               className="rounded-xl"
             />
           </div>
