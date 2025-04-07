@@ -8,13 +8,14 @@ import clsx from "clsx";
 import dayjs from "dayjs";
 import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import Image from "next/image";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BsLayoutSidebarInsetReverse } from "react-icons/bs";
 import { IoIosMore } from "react-icons/io";
 import relativeTime from "dayjs/plugin/relativeTime";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
+import { useSocketStore } from "@/hooks/useSocketStore";
 
 type Message = InferSelectModel<typeof message>;
 
@@ -59,9 +60,43 @@ const useMessages = () => {
   const [input, setInput] = useState("");
   const { data: session } = authClient.useSession();
   const { selectedConvo } = useMainStore((state) => state);
-  const users = new Map(
-    selectedConvo?.members.map((m) => [m.memberId, m.user])
+  const { socket } = useSocketStore((state) => state);
+
+  const users = useMemo(
+    () => new Map(selectedConvo?.members.map((m) => [m.memberId, m.user])),
+    [selectedConvo]
   );
+
+  const selectedConvoRef = useRef(selectedConvo);
+
+  const usersRef = useRef(users);
+
+  useEffect(() => {
+    usersRef.current = users;
+  }, [users]);
+
+  useEffect(() => {
+    selectedConvoRef.current = selectedConvo;
+  }, [selectedConvo]);
+
+  useEffect(() => {
+    const onMessage = (data: Message) => {
+      if (selectedConvoRef.current?.id === data.conversationId) {
+        setMsgMap((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(data.id, data);
+          return newMap;
+        });
+      }
+    };
+
+    socket?.on("message", onMessage);
+
+    return () => {
+      socket?.off("message", onMessage);
+    };
+  }, [socket]);
+
   const messageMutation = useMutation({
     mutationFn: () =>
       sendMessage({
@@ -75,6 +110,10 @@ const useMessages = () => {
         const newMap = new Map(prev);
         newMap.set(data.id, data);
         return newMap;
+      });
+      socket?.emit("message", {
+        message: data,
+        userIds: [...usersRef.current.keys()],
       });
     },
   });
@@ -239,7 +278,8 @@ const Chat = () => {
           messages[index - 1]?.createdAt,
           "minute"
         )
-      ) >= 5
+      ) >= 5 ||
+      messages[index]?.senderId !== messages[index - 1]?.senderId
     );
   };
 

@@ -40,9 +40,13 @@ const main = async () => {
         .returning();
 
       for (const conversation of userConversations) {
-        const otherUser = users.filter((id) => id !== userId)[
+        const secondUser = users.filter((id) => id !== userId)[
           Math.floor(Math.random() * (users.length - 1))
         ];
+
+        const thirdUser = users.filter(
+          (id) => id !== userId && id !== secondUser
+        )[Math.floor(Math.random() * (users.length - 1))];
 
         await db.insert(schema.usersToConversation).values([
           {
@@ -51,7 +55,11 @@ const main = async () => {
           },
           {
             conversationId: conversation.id,
-            memberId: otherUser,
+            memberId: secondUser,
+          },
+          {
+            conversationId: conversation.id,
+            memberId: thirdUser,
           },
         ]);
       }

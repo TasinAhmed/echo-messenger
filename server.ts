@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
+import { InferSelectModel } from "drizzle-orm";
+import { message as msg } from "./db/schemas";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -47,6 +49,30 @@ app.prepare().then(() => {
 
       console.log("Socket disconnected:", socketId, UserToSocket, SocketToUser);
     });
+
+    socket.on(
+      "message",
+      ({
+        message,
+        userIds,
+      }: {
+        message: InferSelectModel<typeof msg>;
+        userIds: string[];
+      }) => {
+        const socketIds = [];
+        for (const u of userIds) {
+          const connections = UserToSocket.get(u);
+          if (!connections) continue;
+
+          for (const connection of connections) {
+            if (connection !== socket.id) {
+              socketIds.push(connection);
+            }
+          }
+        }
+        io.to(socketIds).emit("message", message);
+      }
+    );
   });
 
   httpServer
