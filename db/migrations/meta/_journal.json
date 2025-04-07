@@ -15,6 +15,20 @@
       "when": 1743696945845,
       "tag": "0001_broad_bushwacker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1744044557092,
+      "tag": "0002_milky_sleepwalker",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1744044724768,
+      "tag": "0003_wet_vermin",
+      "breakpoints": true
     }
   ]
 }

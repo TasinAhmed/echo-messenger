@@ -1,5 +1,7 @@
 import { db } from "@/db";
+import { conversation, message } from "@/db/schemas";
 import { auth } from "@/utils/auth";
+import { desc, InferSelectModel } from "drizzle-orm";
 import { headers } from "next/headers";
 
 export interface CustomConvoUser {
@@ -13,6 +15,8 @@ export interface CustomConvoType {
   name: string;
   id: string;
   image: string;
+  messages: InferSelectModel<typeof message>[];
+  updatedAt: Date;
   members: {
     conversationId: string;
     memberId: string;
@@ -30,12 +34,18 @@ export const GET = async () => {
   const id = session.user.id;
 
   const allConversations = await db.query.conversation.findMany({
+    orderBy: [desc(conversation.updatedAt)],
     columns: {
       name: true,
       image: true,
       id: true,
+      updatedAt: true,
     },
     with: {
+      messages: {
+        orderBy: [desc(message.createdAt)],
+        limit: 1,
+      },
       members: {
         with: {
           user: {
@@ -54,6 +64,8 @@ export const GET = async () => {
   const filteredConversations = allConversations.filter((convo) =>
     convo.members.some(({ user }) => user?.id === id)
   );
+
+  console.log(filteredConversations);
 
   return Response.json(filteredConversations);
 };

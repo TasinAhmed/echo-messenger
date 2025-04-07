@@ -15,6 +15,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import { useSocketStore } from "@/hooks/useSocketStore";
 
 type Message = InferSelectModel<typeof message>;
@@ -23,6 +24,25 @@ dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
+dayjs.extend(isSameOrAfter);
+
+const formatTimestamp = (timestamp: Date) => {
+  const date = dayjs(timestamp);
+
+  if (date.isToday()) {
+    return date.format("h:mm A"); // Example: 3:45 PM
+  }
+  if (date.isYesterday()) {
+    return `Yesterday at ${date.format("h:mm A")}`; // Example: Yesterday at 3:45 PM
+  }
+  if (date.isSameOrAfter(dayjs().subtract(7, "days"), "day")) {
+    return `${date.format("dddd")} at ${date.format("h:mm A")}`; // Example: Monday at 3:45 PM
+  }
+  if (date.isSameOrAfter(dayjs().startOf("year"))) {
+    return date.format("MMM D [at] h:mm A"); // Example: Jan 5 at 3:45 PM
+  }
+  return date.format("MMM D, YYYY [at] h:mm A"); // Example: Jan 5, 2023, at 3:45 PM
+};
 
 function formatDate(date: string | Date): string {
   const d = dayjs(date);
@@ -100,7 +120,7 @@ const useMessages = () => {
   const messageMutation = useMutation({
     mutationFn: () =>
       sendMessage({
-        conversationId: selectedConvo?.id as string,
+        conversationId: selectedConvoRef.current?.id as string,
         message: input,
         senderId: session?.user.id as string,
       }),
@@ -119,7 +139,7 @@ const useMessages = () => {
   });
   const { data, refetch } = useQuery({
     queryKey: ["messages"],
-    queryFn: () => fetchMessages(selectedConvo?.id as string),
+    queryFn: () => fetchMessages(selectedConvoRef.current?.id as string),
     enabled: false,
   });
 
@@ -193,57 +213,73 @@ const Message = ({
   data,
   user,
   isNew,
+  showTime,
 }: {
   data: Message;
   user: CustomConvoUser;
   isNew: boolean;
+  showTime: boolean;
 }) => {
   const [formattedTime, setFormattedTime] = useState(() =>
     formatDate(data.createdAt)
   );
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setFormattedTime(formatDate(data.createdAt));
-    }, 60 * 1000); // Update every minute
+    const update = () => setFormattedTime(formatDate(data.createdAt));
 
-    return () => clearInterval(interval);
+    update(); // immediate call
+
+    // How much time until next minute from updatedAt
+    const msSinceUpdate = dayjs().diff(dayjs(data.createdAt));
+    const msUntilNextMinute = 60 * 1000 - (msSinceUpdate % (60 * 1000));
+
+    const timeout = setTimeout(() => {
+      update();
+      const interval = setInterval(update, 60 * 1000);
+
+      // Clean up interval later
+      return () => clearInterval(interval);
+    }, msUntilNextMinute);
+
+    return () => clearTimeout(timeout);
   }, [data.createdAt]);
 
   return (
-    <div
-      className={clsx(
-        "grid grid-cols-[auto_1fr] gap-x-4",
-        isNew ? "mt-8" : "mt-1"
+    <div className={clsx(isNew ? "mt-8" : "mt-1")}>
+      {showTime && (
+        <div className="text-xs text-gray-500 text-center mb-8">
+          {formatTimestamp(data.createdAt)}
+        </div>
       )}
-    >
-      <div className="relative w-14">
-        {isNew && (
-          <div className=" absolute top-0 left-0 overflow-hidden">
-            <Image
-              src="/profile.png"
-              alt="Conversation image"
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                objectPosition: "center",
-              }}
-              width={100}
-              height={100}
-              className="rounded-xl"
-            />
-          </div>
-        )}
-      </div>
-      <div>
-        {isNew && (
-          <div className="flex gap-x-2 items-center">
-            <div className="mb-1 font-bold text-gray-300">{user.name}</div>
-            <div className="text-xs text-gray-500">{formattedTime}</div>
-          </div>
-        )}
-        <div className="text-gray-400">{data.message}</div>
+      <div className="grid grid-cols-[auto_1fr] gap-x-4">
+        <div className="relative w-14">
+          {isNew && (
+            <div className=" absolute top-0 left-0 overflow-hidden">
+              <Image
+                src="/profile.png"
+                alt="Conversation image"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "center",
+                }}
+                width={100}
+                height={100}
+                className="rounded-xl"
+              />
+            </div>
+          )}
+        </div>
+        <div>
+          {isNew && (
+            <div className="flex gap-x-2 items-center">
+              <div className="mb-1 font-bold text-gray-300">{user.name}</div>
+              <div className="text-xs text-gray-500">{formattedTime}</div>
+            </div>
+          )}
+          <div className="text-gray-400">{data.message}</div>
+        </div>
       </div>
     </div>
   );
@@ -283,6 +319,18 @@ const Chat = () => {
     );
   };
 
+  const showTime = (index: number) => {
+    return (
+      index === 0 ||
+      Math.abs(
+        dayjs(messages[index]?.createdAt).diff(
+          messages[index - 1]?.createdAt,
+          "minute"
+        )
+      ) >= 5
+    );
+  };
+
   return (
     <div className="p-8 grid grid-rows-[auto_1fr_auto] gap-y-4 h-screen max-h-screen">
       <Header />
@@ -298,6 +346,7 @@ const Chat = () => {
                   data={data}
                   user={user}
                   isNew={isNewMsg(index)}
+                  showTime={showTime(index)}
                 />
               )
             );
@@ -313,7 +362,7 @@ const Chat = () => {
           onKeyDown={(e) => {
             if (!input) return;
 
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && !messageMutation.isPending) {
               messageMutation.mutate();
             }
           }}

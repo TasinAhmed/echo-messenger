@@ -9,7 +9,7 @@ interface BearState {
 }
 
 export const useMainStore = create<BearState>((set) => ({
-  openDetails: true,
+  openDetails: false,
   toggleOpenDetails: () =>
     set((state) => ({ openDetails: !state.openDetails })),
   selectedConvo: null,

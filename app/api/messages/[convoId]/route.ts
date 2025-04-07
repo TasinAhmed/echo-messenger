@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { message } from "@/db/schemas";
+import { conversation, message } from "@/db/schemas";
 import { eq, InferInsertModel } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
@@ -38,5 +38,10 @@ export const POST = async (
   }
 
   const newMessage = (await db.insert(message).values(res).returning())[0];
+  await db
+    .update(conversation)
+    .set({ updatedAt: newMessage.createdAt })
+    .where(eq(conversation.id, newMessage.conversationId));
+
   return Response.json(newMessage);
 };

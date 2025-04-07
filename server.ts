@@ -27,7 +27,6 @@ app.prepare().then(() => {
         } else {
           UserToSocket.set(userId, [socketId]);
         }
-        console.log(UserToSocket, SocketToUser);
       }
     );
 
@@ -46,8 +45,6 @@ app.prepare().then(() => {
       } else {
         UserToSocket.delete(userId);
       }
-
-      console.log("Socket disconnected:", socketId, UserToSocket, SocketToUser);
     });
 
     socket.on(
@@ -70,7 +67,9 @@ app.prepare().then(() => {
             }
           }
         }
+        console.log(socketIds, UserToSocket, SocketToUser, userIds, "ids");
         io.to(socketIds).emit("message", message);
+        io.to([...socketIds, socket.id]).emit("updateLatestMessage", message);
       }
     );
   });
