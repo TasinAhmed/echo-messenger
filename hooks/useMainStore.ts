@@ -14,4 +14,5 @@ export const useMainStore = create<BearState>((set) => ({
     set((state) => ({ openDetails: !state.openDetails })),
   selectedConvo: null,
   setSelectedConvo: (convo) => set(() => ({ selectedConvo: convo })),
+  fileInfo: null,
 }));

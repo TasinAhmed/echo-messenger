@@ -1,5 +1,5 @@
 {
-  "id": "db29bb47-ffe7-4efb-8de9-b1cca80cb4c8",
+  "id": "ede73251-35db-4235-bf2c-2decbf1c8d7f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -325,8 +325,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "picture_url": {
-          "name": "picture_url",
+        "image": {
+          "name": "image",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -344,6 +344,44 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.file": {
+      "name": "file",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {},
@@ -382,6 +420,12 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "attachment": {
+          "name": "attachment",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -425,6 +469,19 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "message_attachment_file_id_fk": {
+          "name": "message_attachment_file_id_fk",
+          "tableFrom": "message",
+          "tableTo": "file",
+          "columnsFrom": [
+            "attachment"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -441,7 +498,7 @@
           "name": "member_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "conversation_id": {
           "name": "conversation_id",
@@ -469,7 +526,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "no action",
           "onUpdate": "no action"
         },
         "usersToConversation_conversation_id_conversation_id_fk": {

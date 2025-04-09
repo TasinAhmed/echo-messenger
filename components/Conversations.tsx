@@ -84,7 +84,7 @@ const useConversations = () => {
   useEffect(() => {
     if (!data) return;
 
-    setConvoMap(new Map(data.map((convo) => [convo.id, convo])));
+    setConvoMap(new Map(data?.map((convo) => [convo.id, convo])));
   }, [data]);
 
   const convoValues = useMemo(() => {
@@ -159,7 +159,14 @@ const ConversationItem = ({ data }: { data: CustomConvoType }) => {
           <div className="text-sm text-gray-500">{formattedTime}</div>
         </div>
         <div className="whitespace-nowrap overflow-hidden overflow-ellipsis text-gray-400 text-sm">
-          {lastMsg ? `${lastMsgSender}: ${lastMsg.message}` : "NULL"}
+          {lastMsg &&
+            `${lastMsgSender}: ${
+              lastMsg.message
+                ? lastMsg.message
+                : lastMsg.file?.type.startsWith("image")
+                ? "Sent a photo."
+                : "Sent a video."
+            }`}
         </div>
       </div>
     </div>

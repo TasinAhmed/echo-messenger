@@ -1,5 +1,5 @@
 import { CustomConvoUser } from "@/app/api/conversations/route";
-import { message } from "@/db/schemas";
+import { file, message } from "@/db/schemas";
 import { useMainStore } from "@/hooks/useMainStore";
 import { authClient } from "@/utils/auth-client";
 import { http } from "@/utils/http";
@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BsLayoutSidebarInsetReverse } from "react-icons/bs";
+import { BsLayoutSidebarInsetReverse, BsSend } from "react-icons/bs";
 import { IoIosMore } from "react-icons/io";
 import relativeTime from "dayjs/plugin/relativeTime";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -17,8 +17,25 @@ import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import { useSocketStore } from "@/hooks/useSocketStore";
+import { GrAttachment } from "react-icons/gr";
+import Dialog from "./Dialog";
+import { supabase } from "@/utils/supabase";
+import { supabaseImageLoader } from "@/utils/supabaseImageLoader";
+import ReactPlayer from "react-player/lazy";
+import { FaPlay } from "react-icons/fa";
+import { IoClose } from "react-icons/io5";
 
-type Message = InferSelectModel<typeof message>;
+type Message = Omit<InferSelectModel<typeof message>, "attachment"> & {
+  file?: InferSelectModel<typeof file>;
+};
+export type FileInfo = {
+  name: string;
+  type: string;
+  size: number;
+};
+export type CustomFileType = {
+  file?: FileInfo | null;
+};
 
 dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
@@ -80,7 +97,23 @@ const useMessages = () => {
   const [input, setInput] = useState("");
   const { data: session } = authClient.useSession();
   const { selectedConvo } = useMainStore((state) => state);
+  const [file, setFile] = useState<File | null>(null);
   const { socket } = useSocketStore((state) => state);
+  const fileRef = useRef(file);
+
+  const uploadFile = async (data: Message) => {
+    if (!fileRef.current) return;
+
+    const { error } = await supabase.storage
+      .from("echo")
+      .upload(`${data.id}/${fileRef.current.name}`, fileRef.current);
+    if (error) return;
+    setFile(null);
+  };
+
+  useEffect(() => {
+    fileRef.current = file;
+  }, [file]);
 
   const users = useMemo(
     () => new Map(selectedConvo?.members.map((m) => [m.memberId, m.user])),
@@ -123,8 +156,16 @@ const useMessages = () => {
         conversationId: selectedConvoRef.current?.id as string,
         message: input,
         senderId: session?.user.id as string,
+        ...(fileRef.current && {
+          file: {
+            name: fileRef.current.name,
+            size: fileRef.current.size,
+            type: fileRef.current.type,
+          },
+        }),
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await uploadFile(data);
       setInput("");
       setMsgMap((prev) => {
         const newMap = new Map(prev);
@@ -137,7 +178,7 @@ const useMessages = () => {
       });
     },
   });
-  const { data, refetch } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: ["messages"],
     queryFn: () => fetchMessages(selectedConvoRef.current?.id as string),
     enabled: false,
@@ -160,7 +201,18 @@ const useMessages = () => {
     return [...msgMap.values()];
   }, [msgMap]);
 
-  return { msgMap, messages, input, setInput, messageMutation, users };
+  return {
+    msgMap,
+    messages,
+    input,
+    setInput,
+    messageMutation,
+    users,
+    file,
+    setFile,
+    isFetching,
+    selectedConvo,
+  };
 };
 
 const Button = ({
@@ -279,6 +331,41 @@ const Message = ({
             </div>
           )}
           <div className="text-gray-400">{data.message}</div>
+          {data.file && (
+            <div className="my-4">
+              {data.file.type.startsWith("image") && (
+                <Image
+                  src={
+                    supabase.storage
+                      .from("echo")
+                      .getPublicUrl(`/${data.id}/${data.file.name}`).data
+                      .publicUrl
+                  }
+                  loader={supabaseImageLoader}
+                  alt="Message image"
+                  width={350}
+                  height={350}
+                  className="rounded-md"
+                />
+              )}
+              {data.file.type.startsWith("video") && (
+                <div className="w-[350px] overflow-hidden rounded-md">
+                  <ReactPlayer
+                    url={
+                      supabase.storage
+                        .from("echo")
+                        .getPublicUrl(`/${data.id}/${data.file.name}`).data
+                        .publicUrl
+                    }
+                    width="100%"
+                    height="100%"
+                    controls
+                    className="rounded-md  h-auto aspect-video"
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -292,8 +379,9 @@ const fetchMessages = async (convoId: string): Promise<Message[]> => {
 };
 
 const sendMessage = async (
-  data: InferInsertModel<typeof message>
+  data: InferInsertModel<typeof message> & CustomFileType
 ): Promise<Message> => {
+  console.log(data, "send data");
   const response = await http({
     path: `/messages/${data.conversationId}`,
     method: "POST",
@@ -304,7 +392,28 @@ const sendMessage = async (
 };
 
 const Chat = () => {
-  const { messageMutation, messages, input, setInput, users } = useMessages();
+  const allowedTypes = ["video/mp4", "image/jpeg", "image/png"];
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [invalidType, setInvalidType] = useState(false);
+  const [maxSize, setMaxSize] = useState(false);
+  const fileRef = useRef<File | null>(null);
+  const [fileUrl, setFileUrl] = useState("");
+  const {
+    messageMutation,
+    messages,
+    input,
+    setInput,
+    users,
+    file,
+    setFile,
+    isFetching,
+    selectedConvo,
+  } = useMessages();
+
+  useEffect(() => {
+    fileRef.current = file;
+    if (file) setFileUrl(URL.createObjectURL(file));
+  }, [file]);
 
   const isNewMsg = (index: number) => {
     return (
@@ -319,6 +428,11 @@ const Chat = () => {
     );
   };
 
+  useEffect(() => {
+    setFile(null);
+    setInput("");
+  }, [selectedConvo, setFile, setInput]);
+
   const showTime = (index: number) => {
     return (
       index === 0 ||
@@ -331,42 +445,138 @@ const Chat = () => {
     );
   };
 
+  const onSubmit = () => {
+    if ((!input && !file) || isFetching) return;
+
+    if (messageMutation.isPending) return;
+
+    messageMutation.mutate();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+
+    if (!selected) return;
+
+    if (!allowedTypes.includes(selected.type)) {
+      setInvalidType(true);
+      return;
+    }
+
+    if (selected.size > 10485760) {
+      setMaxSize(true);
+      return;
+    }
+
+    setFile(selected);
+  };
+
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="p-8 grid grid-rows-[auto_1fr_auto] gap-y-4 h-screen max-h-screen">
+      <Dialog
+        open={invalidType}
+        onClose={() => {
+          setInvalidType(false);
+        }}
+        title="Invalid File Type"
+        description="The file you selected is not supported. Please upload a JPEG,
+          PNG, or MP4"
+      />
+      <Dialog
+        open={maxSize}
+        onClose={() => {
+          setMaxSize(false);
+        }}
+        title="File is too big!"
+        description="The file you selected exceeds the size limit of 10MB."
+      />
       <Header />
-      <div className="flex flex-col-reverse overflow-y-auto">
-        <div className="grid pb-4">
-          {messages?.map((data, index) => {
-            const user = users.get(data.senderId);
-
-            return (
-              user && (
-                <Message
-                  key={index}
-                  data={data}
-                  user={user}
-                  isNew={isNewMsg(index)}
-                  showTime={showTime(index)}
-                />
-              )
-            );
-          })}
+      {isFetching ? (
+        <div className="flex justify-center items-center">
+          <div className="w-8 h-8 border-4 border-highlight border-t-transparent rounded-full animate-spin"></div>
         </div>
-      </div>
-      <div className="bg-secondary py-6 px-8 rounded-2xl">
-        <input
-          className="w-full outline-0"
-          placeholder="Write a message..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (!input) return;
+      ) : (
+        <div className="flex flex-col-reverse overflow-y-auto">
+          <div className="grid pb-4">
+            {messages?.map((data, index) => {
+              const user = users.get(data.senderId);
 
-            if (e.key === "Enter" && !messageMutation.isPending) {
-              messageMutation.mutate();
-            }
-          }}
-        />
+              return (
+                user && (
+                  <Message
+                    key={index}
+                    data={data}
+                    user={user}
+                    isNew={isNewMsg(index)}
+                    showTime={showTime(index)}
+                  />
+                )
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="bg-secondary p-6 rounded-2xl grid gap-y-6">
+        {file && (
+          <div className="h-[150px] relative flex">
+            <div className="h-full w-auto relative">
+              <div
+                className="w-8 rounded-full aspect-square bg-primary absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer"
+                onClick={() => setFile(null)}
+              >
+                <IoClose />
+              </div>
+              <div className="rounded-xl overflow-hidden h-full w-auto">
+                {file.type.startsWith("image") ? (
+                  <Image
+                    src={fileUrl}
+                    alt="Uploaded file"
+                    height={0}
+                    width={0}
+                    className="h-full w-auto rounded-xl"
+                  />
+                ) : (
+                  <>
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[50px] aspect-square rounded-full bg-black">
+                      <FaPlay size={20} fill="white" />
+                    </div>
+                    <ReactPlayer url={fileUrl} width="auto" height="100%" />
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="flex gap-x-4 items-center">
+          <GrAttachment
+            size={22}
+            className="cursor-pointer"
+            onClick={triggerFileSelect}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <input
+            className="w-full outline-0"
+            placeholder="Write a message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onSubmit();
+              }
+            }}
+          />
+          <BsSend size={22} className="cursor-pointer" onClick={onSubmit} />
+        </div>
       </div>
     </div>
   );

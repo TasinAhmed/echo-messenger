@@ -5,8 +5,15 @@ const ChatDetails = () => {
   const openDetails = useMainStore((state) => state.openDetails);
 
   return (
-    <div className={clsx("p-8", openDetails ? "block" : "hidden")}>
-      <div className="w-80 text-xl">Chat Details</div>
+    <div
+      className={clsx(
+        "relative transition-[width] ease-in-out",
+        openDetails ? "w-80" : "w-0"
+      )}
+    >
+      <div className="p-8 absolute w-full h-full left-0 top-0 text-xl box-border">
+        Members
+      </div>
     </div>
   );
 };

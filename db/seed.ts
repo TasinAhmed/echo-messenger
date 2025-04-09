@@ -12,6 +12,7 @@ const main = async () => {
     await db.delete(schema.account);
     await db.delete(schema.session);
     await db.delete(schema.verification);
+    await db.delete(schema.file);
 
     const createUsers = [...Array(20).keys()].map(() => {
       const user = {
@@ -40,26 +41,25 @@ const main = async () => {
         .returning();
 
       for (const conversation of userConversations) {
-        const secondUser = users.filter((id) => id !== userId)[
-          Math.floor(Math.random() * (users.length - 1))
-        ];
-
-        const thirdUser = users.filter(
-          (id) => id !== userId && id !== secondUser
-        )[Math.floor(Math.random() * (users.length - 1))];
+        let filteredUsers = users.filter((id) => id !== userId);
+        const secondUser =
+          filteredUsers[Math.floor(Math.random() * filteredUsers.length)];
+        filteredUsers = filteredUsers.filter((id) => id !== secondUser);
+        const thirdUser =
+          filteredUsers[Math.floor(Math.random() * filteredUsers.length)];
 
         await db.insert(schema.usersToConversation).values([
           {
             conversationId: conversation.id,
-            memberId: userId,
+            memberId: userId!,
           },
           {
             conversationId: conversation.id,
-            memberId: secondUser,
+            memberId: secondUser!,
           },
           {
             conversationId: conversation.id,
-            memberId: thirdUser,
+            memberId: thirdUser!,
           },
         ]);
       }

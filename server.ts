@@ -67,7 +67,6 @@ app.prepare().then(() => {
             }
           }
         }
-        console.log(socketIds, UserToSocket, SocketToUser, userIds, "ids");
         io.to(socketIds).emit("message", message);
         io.to([...socketIds, socket.id]).emit("updateLatestMessage", message);
       }

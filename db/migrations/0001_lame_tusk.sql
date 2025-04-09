@@ -1,0 +1,1 @@
+ALTER TABLE "file" ADD COLUMN "url" text NOT NULL;

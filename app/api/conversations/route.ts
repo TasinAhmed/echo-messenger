@@ -1,3 +1,4 @@
+import { CustomFileType } from "@/components/Chat";
 import { db } from "@/db";
 import { conversation, message } from "@/db/schemas";
 import { auth } from "@/utils/auth";
@@ -15,7 +16,7 @@ export interface CustomConvoType {
   name: string;
   id: string;
   image: string;
-  messages: InferSelectModel<typeof message>[];
+  messages: (InferSelectModel<typeof message> & CustomFileType)[];
   updatedAt: Date;
   members: {
     conversationId: string;
@@ -45,6 +46,9 @@ export const GET = async () => {
       messages: {
         orderBy: [desc(message.createdAt)],
         limit: 1,
+        with: {
+          file: true,
+        },
       },
       members: {
         with: {
