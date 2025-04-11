@@ -10,7 +10,7 @@ const queryClient = new QueryClient();
 const Home = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="bg-primary h-screen w-screen grid grid-cols-[auto_1fr_auto] text-white">
+      <div className="bg-primary h-screen w-screen grid grid-cols-[auto_1fr_auto] gap-x-4 text-white p-4">
         <Navbar />
         <Main />
         <ChatDetails />

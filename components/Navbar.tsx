@@ -28,7 +28,7 @@ const NavbarItem = ({ className }: { className?: string }) => {
 
 const Navbar = () => {
   return (
-    <div className="w-25 flex justify-center items-center">
+    <div className="w-25 flex justify-center items-center bg-background rounded-2xl">
       <div className="grid gap-y-4">
         <NavbarItem className="bg-secondary" />
         <NavbarItem />

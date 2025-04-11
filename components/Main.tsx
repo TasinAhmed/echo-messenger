@@ -1,21 +1,13 @@
-import clsx from "clsx";
 import Chat from "./Chat";
 import Conversations from "./Conversations";
 import { useMainStore } from "@/hooks/useMainStore";
 import Image from "next/image";
 
 const Main = () => {
-  const { openDetails, selectedConvo } = useMainStore((state) => state);
+  const { selectedConvo } = useMainStore((state) => state);
 
   return (
-    <div
-      className={clsx(
-        "bg-background grid grid-cols-[auto_1fr] overflow-hidden",
-        openDetails
-          ? "rounded-l-4xl rounded-r-4xl"
-          : "rounded-l-4xl rounded-r-none"
-      )}
-    >
+    <div className="grid grid-cols-[auto_1fr] overflow-hidden gap-x-4">
       <Conversations />
       {selectedConvo ? (
         <Chat />

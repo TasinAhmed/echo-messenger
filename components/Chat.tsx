@@ -10,19 +10,17 @@ import { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BsLayoutSidebarInsetReverse, BsSend } from "react-icons/bs";
-import { IoIosMore } from "react-icons/io";
 import relativeTime from "dayjs/plugin/relativeTime";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import { useSocketStore } from "@/hooks/useSocketStore";
-import { GrAttachment } from "react-icons/gr";
 import Dialog from "./Dialog";
 import { supabase } from "@/utils/supabase";
 import { supabaseImageLoader } from "@/utils/supabaseImageLoader";
 import ReactPlayer from "react-player/lazy";
-import { FaPlay } from "react-icons/fa";
+import { FaImage, FaPlay } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
 
 type Message = Omit<InferSelectModel<typeof message>, "attachment"> & {
@@ -61,36 +59,36 @@ const formatTimestamp = (timestamp: Date) => {
   return date.format("MMM D, YYYY [at] h:mm A"); // Example: Jan 5, 2023, at 3:45 PM
 };
 
-function formatDate(date: string | Date): string {
-  const d = dayjs(date);
-  const now = dayjs();
+// function formatDate(date: string | Date): string {
+//   const d = dayjs(date);
+//   const now = dayjs();
 
-  if (now.diff(d, "minute") < 1) {
-    return "Just now";
-  }
+//   if (now.diff(d, "minute") < 1) {
+//     return "Just now";
+//   }
 
-  if (now.diff(d, "hour") < 1) {
-    return d.fromNow();
-  }
+//   if (now.diff(d, "hour") < 1) {
+//     return d.fromNow();
+//   }
 
-  if (d.isToday()) {
-    return `Today at ${d.format("h:mm A")}`;
-  }
+//   if (d.isToday()) {
+//     return `Today at ${d.format("h:mm A")}`;
+//   }
 
-  if (d.isYesterday()) {
-    return `Yesterday at ${d.format("h:mm A")}`;
-  }
+//   if (d.isYesterday()) {
+//     return `Yesterday at ${d.format("h:mm A")}`;
+//   }
 
-  if (now.diff(d, "day") < 7) {
-    return `${d.format("dddd")} at ${d.format("h:mm A")}`;
-  }
+//   if (now.diff(d, "day") < 7) {
+//     return `${d.format("dddd")} at ${d.format("h:mm A")}`;
+//   }
 
-  if (now.year() === d.year()) {
-    return d.format("MMM D [at] h:mm A");
-  }
+//   if (now.year() === d.year()) {
+//     return d.format("MMM D [at] h:mm A");
+//   }
 
-  return d.format("MMM D, YYYY [at] h:mm A");
-}
+//   return d.format("MMM D, YYYY [at] h:mm A");
+// }
 
 const useMessages = () => {
   const [msgMap, setMsgMap] = useState<Map<string, Message>>(new Map());
@@ -244,7 +242,7 @@ const Header = () => {
   );
 
   return (
-    <div className="py-4 flex justify-between items-center">
+    <div className="py-6 px-10 flex justify-between items-center border-b border-secondary">
       <div>
         <div className="text-2xl font-bold">{selectedConvo?.name}</div>
         <div>{selectedConvo?.members.length} members</div>
@@ -252,9 +250,6 @@ const Header = () => {
       <div className="flex gap-x-2 items-center">
         <Button selected={openDetails} onClick={toggleOpenDetails}>
           <BsLayoutSidebarInsetReverse size={BUTTON_SIZE} />
-        </Button>
-        <Button>
-          <IoIosMore size={BUTTON_SIZE} />
         </Button>
       </div>
     </div>
@@ -272,29 +267,14 @@ const Message = ({
   isNew: boolean;
   showTime: boolean;
 }) => {
-  const [formattedTime, setFormattedTime] = useState(() =>
-    formatDate(data.createdAt)
+  const formattedTime = formatTimestamp(data.createdAt);
+  const [showDate, setShowDate] = useState(false);
+  const { data: session } = authClient.useSession();
+
+  const isCurrUser = useMemo(
+    () => user.id === session?.user.id,
+    [user, session]
   );
-
-  useEffect(() => {
-    const update = () => setFormattedTime(formatDate(data.createdAt));
-
-    update(); // immediate call
-
-    // How much time until next minute from updatedAt
-    const msSinceUpdate = dayjs().diff(dayjs(data.createdAt));
-    const msUntilNextMinute = 60 * 1000 - (msSinceUpdate % (60 * 1000));
-
-    const timeout = setTimeout(() => {
-      update();
-      const interval = setInterval(update, 60 * 1000);
-
-      // Clean up interval later
-      return () => clearInterval(interval);
-    }, msUntilNextMinute);
-
-    return () => clearTimeout(timeout);
-  }, [data.createdAt]);
 
   return (
     <div className={clsx(isNew ? "mt-8" : "mt-1")}>
@@ -303,7 +283,13 @@ const Message = ({
           {formatTimestamp(data.createdAt)}
         </div>
       )}
-      <div className="grid grid-cols-[auto_1fr] gap-x-4">
+      <div
+        className={clsx(
+          "flex gap-x-4",
+          isCurrUser && "flex-row-reverse",
+          isCurrUser ? "mr-4" : "ml-4"
+        )}
+      >
         <div className="relative w-14">
           {isNew && (
             <div className=" absolute top-0 left-0 overflow-hidden">
@@ -323,16 +309,76 @@ const Message = ({
             </div>
           )}
         </div>
-        <div>
-          {isNew && (
-            <div className="flex gap-x-2 items-center">
-              <div className="mb-1 font-bold text-gray-300">{user.name}</div>
-              <div className="text-xs text-gray-500">{formattedTime}</div>
-            </div>
+        <div
+          className={clsx(
+            "grid",
+            isCurrUser ? "justify-items-end" : "justify-items-start"
           )}
-          <div className="text-gray-400">{data.message}</div>
+        >
+          <div
+            className={clsx(
+              "grid",
+              isCurrUser ? "justify-items-end" : "justify-items-start"
+            )}
+          >
+            {isNew && (
+              <div className="flex gap-x-2 items-center">
+                <div
+                  className={clsx(
+                    "font-bold text-gray-300",
+                    data.message && "mb-3"
+                  )}
+                >
+                  {isCurrUser ? "You" : user.name}
+                </div>
+              </div>
+            )}
+            <div className="relative">
+              <div
+                onMouseOver={() => setShowDate(true)}
+                onMouseLeave={() => setShowDate(false)}
+                className={clsx(
+                  "text-gray-300",
+                  isCurrUser && "text-end",
+                  data.message && !isCurrUser && "bg-secondary",
+                  data.message && isCurrUser && "bg-primary",
+                  data.message && "rounded-2xl py-4 px-6 max-w-[600px]"
+                )}
+              >
+                {data.message}
+              </div>
+              {!data.file && (
+                <div
+                  className={clsx(
+                    "absolute w-auto whitespace-nowrap top-1/2 -translate-y-1/2 text-sm text-gray-500 transition-opacity",
+                    isCurrUser
+                      ? "right-[calc(100%+10px)]"
+                      : "left-[calc(100%+10px)]",
+                    showDate ? "opacity-100" : "opacity-0"
+                  )}
+                >
+                  {formattedTime}
+                </div>
+              )}
+            </div>
+          </div>
           {data.file && (
-            <div className="my-4">
+            <div
+              className="my-4 relative"
+              onMouseOver={() => setShowDate(true)}
+              onMouseLeave={() => setShowDate(false)}
+            >
+              <div
+                className={clsx(
+                  "absolute w-auto whitespace-nowrap top-1/2 -translate-y-1/2 text-sm text-gray-500 transition-opacity",
+                  isCurrUser
+                    ? "right-[calc(100%+10px)]"
+                    : "left-[calc(100%+10px)]",
+                  showDate ? "opacity-100" : "opacity-0"
+                )}
+              >
+                {formattedTime}
+              </div>
               {data.file.type.startsWith("image") && (
                 <Image
                   src={
@@ -345,11 +391,11 @@ const Message = ({
                   alt="Message image"
                   width={350}
                   height={350}
-                  className="rounded-md"
+                  className="rounded-2xl"
                 />
               )}
               {data.file.type.startsWith("video") && (
-                <div className="w-[350px] overflow-hidden rounded-md">
+                <div className="w-[350px] overflow-hidden rounded-2xl">
                   <ReactPlayer
                     url={
                       supabase.storage
@@ -476,7 +522,7 @@ const Chat = () => {
   };
 
   return (
-    <div className="p-8 grid grid-rows-[auto_1fr_auto] gap-y-4 h-screen max-h-screen">
+    <div className="bg-background grid grid-rows-[auto_1fr] gap-y-4 h-full rounded-3xl overflow-hidden">
       <Dialog
         open={invalidType}
         onClose={() => {
@@ -495,87 +541,90 @@ const Chat = () => {
         description="The file you selected exceeds the size limit of 10MB."
       />
       <Header />
-      {isFetching ? (
-        <div className="flex justify-center items-center">
-          <div className="w-8 h-8 border-4 border-highlight border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : (
-        <div className="flex flex-col-reverse overflow-y-auto">
-          <div className="grid pb-4">
-            {messages?.map((data, index) => {
-              const user = users.get(data.senderId);
-
-              return (
-                user && (
-                  <Message
-                    key={index}
-                    data={data}
-                    user={user}
-                    isNew={isNewMsg(index)}
-                    showTime={showTime(index)}
-                  />
-                )
-              );
-            })}
+      <div className="grid grid-rows-[1fr_auto] overflow-hidden px-10 pb-6 gap-y-4">
+        {isFetching ? (
+          <div className="flex justify-center items-center">
+            <div className="w-8 h-8 border-4 border-highlight border-t-transparent rounded-full animate-spin"></div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="pb-4 relative overflow-y-auto flex flex-col-reverse">
+            <div>
+              {messages?.map((data, index) => {
+                const user = users.get(data.senderId);
 
-      <div className="bg-secondary p-6 rounded-2xl grid gap-y-6">
-        {file && (
-          <div className="h-[150px] relative flex">
-            <div className="h-full w-auto relative">
-              <div
-                className="w-8 rounded-full aspect-square bg-primary absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer"
-                onClick={() => setFile(null)}
-              >
-                <IoClose />
-              </div>
-              <div className="rounded-xl overflow-hidden h-full w-auto">
-                {file.type.startsWith("image") ? (
-                  <Image
-                    src={fileUrl}
-                    alt="Uploaded file"
-                    height={0}
-                    width={0}
-                    className="h-full w-auto rounded-xl"
-                  />
-                ) : (
-                  <>
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[50px] aspect-square rounded-full bg-black">
-                      <FaPlay size={20} fill="white" />
-                    </div>
-                    <ReactPlayer url={fileUrl} width="auto" height="100%" />
-                  </>
-                )}
-              </div>
+                return (
+                  user && (
+                    <Message
+                      key={index}
+                      data={data}
+                      user={user}
+                      isNew={isNewMsg(index)}
+                      showTime={showTime(index)}
+                    />
+                  )
+                );
+              })}
             </div>
           </div>
         )}
-        <div className="flex gap-x-4 items-center">
-          <GrAttachment
-            size={22}
-            className="cursor-pointer"
-            onClick={triggerFileSelect}
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          <input
-            className="w-full outline-0"
-            placeholder="Write a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                onSubmit();
-              }
-            }}
-          />
-          <BsSend size={22} className="cursor-pointer" onClick={onSubmit} />
+
+        <div className="bg-secondary p-6 rounded-2xl grid gap-y-6">
+          {file && (
+            <div className="h-[150px] relative flex">
+              <div className="h-full w-auto relative">
+                <div
+                  className="w-8 rounded-full aspect-square bg-primary absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer"
+                  onClick={() => setFile(null)}
+                >
+                  <IoClose />
+                </div>
+                <div className="rounded-xl overflow-hidden h-full w-auto">
+                  {fileUrl &&
+                    (file.type.startsWith("image") ? (
+                      <Image
+                        src={fileUrl}
+                        alt="Uploaded file"
+                        height={0}
+                        width={0}
+                        className="h-full w-auto rounded-xl"
+                      />
+                    ) : (
+                      <>
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-[50px] aspect-square rounded-full bg-black">
+                          <FaPlay size={20} fill="white" />
+                        </div>
+                        <ReactPlayer url={fileUrl} width="auto" height="100%" />
+                      </>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-x-4 items-center">
+            <FaImage
+              size={22}
+              className="cursor-pointer"
+              onClick={triggerFileSelect}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <input
+              className="w-full outline-0"
+              placeholder="Write a message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  onSubmit();
+                }
+              }}
+            />
+            <BsSend size={22} className="cursor-pointer" onClick={onSubmit} />
+          </div>
         </div>
       </div>
     </div>

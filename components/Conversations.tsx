@@ -8,8 +8,9 @@ import clsx from "clsx";
 import dayjs from "dayjs";
 import { InferSelectModel } from "drizzle-orm";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { MouseEventHandler, useEffect, useMemo, useRef, useState } from "react";
 import { CiSearch } from "react-icons/ci";
+import { IoClose } from "react-icons/io5";
 
 function getRelativeTimeShort(date: Date) {
   const now = dayjs();
@@ -32,6 +33,9 @@ function getRelativeTimeShort(date: Date) {
 }
 
 const useConversations = () => {
+  const [search, setSearch] = useState("");
+  const [cleanSearch, setCleanSearch] = useState("");
+  const [results, setResults] = useState<CustomConvoType[]>([]);
   const fetchUserConversations = async (): Promise<CustomConvoType[]> => {
     const response = await http({ path: "/conversations", method: "GET" });
 
@@ -42,8 +46,17 @@ const useConversations = () => {
   const [convoMap, setConvoMap] = useState<Map<string, CustomConvoType>>(
     new Map()
   );
+  const [convoValues, setConvoValues] = useState<CustomConvoType[]>([]);
 
   const convoMapRef = useRef(convoMap);
+
+  const escapeRegExp = (string: string) => {
+    return string.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  };
+
+  useEffect(() => {
+    setCleanSearch(escapeRegExp(search));
+  }, [search]);
 
   const updateLatestMessage = (data: InferSelectModel<typeof message>) => {
     let newMap = new Map(convoMapRef.current);
@@ -66,6 +79,7 @@ const useConversations = () => {
 
   useEffect(() => {
     convoMapRef.current = convoMap;
+    setSearch("");
   }, [convoMap]);
 
   useEffect(() => {
@@ -87,11 +101,29 @@ const useConversations = () => {
     setConvoMap(new Map(data?.map((convo) => [convo.id, convo])));
   }, [data]);
 
-  const convoValues = useMemo(() => {
-    return [...convoMap.values()];
+  useEffect(() => {
+    setConvoValues([...convoMap.values()]);
   }, [convoMap]);
 
-  return { convoValues };
+  useEffect(() => {
+    if (!cleanSearch) {
+      setResults([]);
+      return;
+    }
+
+    const regex = new RegExp(cleanSearch, "i");
+
+    const convoArray = Array.from(convoMap.values());
+    setResults(
+      convoArray.filter(
+        (convo) =>
+          regex.test(convo.name) ||
+          convo.members.some((user) => regex.test(user.user.name))
+      )
+    );
+  }, [cleanSearch, convoMap]);
+
+  return { convoValues, cleanSearch, setSearch, results, search };
 };
 
 const ConversationItem = ({ data }: { data: CustomConvoType }) => {
@@ -159,6 +191,7 @@ const ConversationItem = ({ data }: { data: CustomConvoType }) => {
           <div className="text-sm text-gray-500">{formattedTime}</div>
         </div>
         <div className="whitespace-nowrap overflow-hidden overflow-ellipsis text-gray-400 text-sm">
+          {!lastMsg && "New Conversation"}
           {lastMsg &&
             `${lastMsgSender}: ${
               lastMsg.message
@@ -173,20 +206,95 @@ const ConversationItem = ({ data }: { data: CustomConvoType }) => {
   );
 };
 
-const Conversations = () => {
-  const { convoValues } = useConversations();
+const SearchItem = ({
+  data,
+  onClick,
+}: {
+  data: CustomConvoType;
+  onClick: MouseEventHandler<HTMLDivElement>;
+}) => {
+  const { setSelectedConvo } = useMainStore((state) => state);
 
   return (
-    <div className="p-8 w-115 grid grid-rows-[auto_1fr]">
+    <div
+      onClick={(e) => {
+        onClick(e);
+        setSelectedConvo(data);
+      }}
+      className={clsx(
+        "rounded-2xl p-4 cursor-pointer grid grid-cols-[auto_1fr] min-w-0 gap-x-4"
+      )}
+    >
+      <div className="w-15 h-15 relative rounded-xl overflow-hidden">
+        <Image
+          src="/profile.png"
+          alt="Conversation image"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+          }}
+          width={100}
+          height={100}
+        />
+      </div>
+      <div className="whitespace-nowrap overflow-hidden overflow-ellipsis">
+        <div className="flex items-center gap-x-4 justify-between">
+          <div className="whitespace-nowrap overflow-hidden overflow-ellipsis font-bold">
+            {data.name}
+          </div>
+        </div>
+        <div className="whitespace-nowrap overflow-hidden overflow-ellipsis text-gray-400 text-sm">
+          {data.members.map((m) => m.user.name).join(", ")}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Conversations = () => {
+  const { convoValues, cleanSearch, setSearch, results, search } =
+    useConversations();
+
+  return (
+    <div className="bg-background p-8 w-115 grid grid-rows-[auto_1fr] rounded-2xl overflow-hidden">
       <div className="bg-secondary h-14 rounded-2xl mb-4 flex items-center px-4 gap-x-3">
         <CiSearch size={24} />
-        <input className="outline-0 w-full" placeholder="Search" />
+        <div className="relative grow">
+          <input
+            className="outline-0 w-full"
+            placeholder="Search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {cleanSearch && (
+            <div
+              onClick={() => setSearch("")}
+              className="cursor-pointer w-5 aspect-square bg-background rounded-full flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2"
+            >
+              <IoClose fill="gray" />
+            </div>
+          )}
+        </div>
       </div>
       <div className="h-full max-h-full overflow-y-auto relative overflow-x-hidden">
-        <div className="grid gap-y-2 absolute h-full w-full left-0 top-0 min-h-0 min-w-0">
-          {convoValues.map((convo) => (
-            <ConversationItem key={convo.id} data={convo} />
-          ))}
+        {cleanSearch && results.length === 0 && (
+          <div className="text-center">No results</div>
+        )}
+        <div className="grid content-start gap-y-2 absolute h-full w-full left-0 top-0 min-h-0 min-w-0">
+          {!cleanSearch &&
+            convoValues.map((convo) => (
+              <ConversationItem key={convo.id} data={convo} />
+            ))}
+          {cleanSearch &&
+            results.map((convo) => (
+              <SearchItem
+                onClick={() => setSearch("")}
+                key={convo.id}
+                data={convo}
+              />
+            ))}
         </div>
       </div>
     </div>
