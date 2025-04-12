@@ -16,12 +16,22 @@ import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import { useSocketStore } from "@/hooks/useSocketStore";
-import Dialog from "./Dialog";
 import { supabase } from "@/utils/supabase";
 import { supabaseImageLoader } from "@/utils/supabaseImageLoader";
 import ReactPlayer from "react-player/lazy";
 import { FaImage, FaPlay } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
+import { Card } from "./ui/card";
+import { Avatar, AvatarImage } from "./ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 
 type Message = Omit<InferSelectModel<typeof message>, "attachment"> & {
   file?: InferSelectModel<typeof file>;
@@ -242,7 +252,7 @@ const Header = () => {
   );
 
   return (
-    <div className="py-6 px-10 flex justify-between items-center border-b border-secondary">
+    <div className="pb-6 px-10 flex justify-between items-center border-b border-secondary">
       <div>
         <div className="text-2xl font-bold">{selectedConvo?.name}</div>
         <div>{selectedConvo?.members.length} members</div>
@@ -290,22 +300,12 @@ const Message = ({
           isCurrUser ? "mr-4" : "ml-4"
         )}
       >
-        <div className="relative w-14">
-          {isNew && (
-            <div className=" absolute top-0 left-0 overflow-hidden">
-              <Image
-                src="/profile.png"
-                alt="Conversation image"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "center",
-                }}
-                width={100}
-                height={100}
-                className="rounded-xl"
-              />
+        <div className={clsx("relative shrink-0", !isCurrUser && "w-14")}>
+          {isNew && !isCurrUser && (
+            <div className=" absolute top-0 left-0 overflow-hidden w-14 aspect-square">
+              <Avatar className="w-full h-full">
+                <AvatarImage src={user.image} />
+              </Avatar>
             </div>
           )}
         </div>
@@ -317,19 +317,16 @@ const Message = ({
         >
           <div
             className={clsx(
-              "grid",
+              "grid relative",
               isCurrUser ? "justify-items-end" : "justify-items-start"
             )}
           >
-            {isNew && (
-              <div className="flex gap-x-2 items-center">
+            {isNew && !isCurrUser && (
+              <div className="flex gap-x-2 items-center absolute left-0 bottom-full mb-2">
                 <div
-                  className={clsx(
-                    "font-bold text-gray-300",
-                    data.message && "mb-3"
-                  )}
+                  className={clsx("text-muted-foreground whitespace-nowrap")}
                 >
-                  {isCurrUser ? "You" : user.name}
+                  {user.name}
                 </div>
               </div>
             )}
@@ -338,10 +335,11 @@ const Message = ({
                 onMouseOver={() => setShowDate(true)}
                 onMouseLeave={() => setShowDate(false)}
                 className={clsx(
-                  "text-gray-300",
                   isCurrUser && "text-end",
-                  data.message && !isCurrUser && "bg-secondary",
-                  data.message && isCurrUser && "bg-primary",
+                  data.message && !isCurrUser && "bg-secondary rounded-tl-none",
+                  data.message &&
+                    isCurrUser &&
+                    "bg-primary text-primary-foreground rounded-tr-none",
                   data.message && "rounded-2xl py-4 px-6 max-w-[600px]"
                 )}
               >
@@ -364,7 +362,7 @@ const Message = ({
           </div>
           {data.file && (
             <div
-              className="my-4 relative"
+              className="my-2 relative"
               onMouseOver={() => setShowDate(true)}
               onMouseLeave={() => setShowDate(false)}
             >
@@ -522,24 +520,34 @@ const Chat = () => {
   };
 
   return (
-    <div className="bg-background grid grid-rows-[auto_1fr] gap-y-4 h-full rounded-3xl overflow-hidden">
-      <Dialog
-        open={invalidType}
-        onClose={() => {
-          setInvalidType(false);
-        }}
-        title="Invalid File Type"
-        description="The file you selected is not supported. Please upload a JPEG,
-          PNG, or MP4"
-      />
-      <Dialog
-        open={maxSize}
-        onClose={() => {
-          setMaxSize(false);
-        }}
-        title="File is too big!"
-        description="The file you selected exceeds the size limit of 10MB."
-      />
+    <Card className="grid grid-rows-[auto_1fr] gap-y-4 h-full overflow-hidden">
+      <AlertDialog open={invalidType} onOpenChange={setInvalidType}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Invalid File Type</AlertDialogTitle>
+            <AlertDialogDescription>
+              The file you selected is not supported. Please upload a JPEG, PNG,
+              or MP4
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Ok</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={maxSize} onOpenChange={setMaxSize}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>File is too big!</AlertDialogTitle>
+            <AlertDialogDescription>
+              The file you selected exceeds the size limit of 10MB.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Ok</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Header />
       <div className="grid grid-rows-[1fr_auto] overflow-hidden px-10 pb-6 gap-y-4">
         {isFetching ? (
@@ -547,7 +555,20 @@ const Chat = () => {
             <div className="w-8 h-8 border-4 border-highlight border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
-          <div className="pb-4 relative overflow-y-auto flex flex-col-reverse">
+          <div className="pb-4 relative overflow-x-hidden overflow-y-auto flex flex-col-reverse">
+            {!isFetching && messages.length === 0 && selectedConvo && (
+              <div className="grid justify-items-center">
+                <Avatar className="w-[150px] aspect-square h-full">
+                  <AvatarImage src={selectedConvo.image} />
+                </Avatar>
+                <div className="text-2xl font-bold mt-4 mb-2">
+                  {selectedConvo.name}
+                </div>
+                <div className="text-gray-400">
+                  Type your first message to get started!
+                </div>
+              </div>
+            )}
             <div>
               {messages?.map((data, index) => {
                 const user = users.get(data.senderId);
@@ -568,12 +589,19 @@ const Chat = () => {
           </div>
         )}
 
-        <div className="bg-secondary p-6 rounded-2xl grid gap-y-6">
+        <div
+          className={clsx(
+            "grid gap-y-6 w-full items-center rounded-md border px-6 py-4 transition-[color,box-shadow]",
+            "border-input bg-input/30 shadow-xs",
+            "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
+            "aria-[invalid=true]:ring-destructive/20 dark:aria-[invalid=true]:ring-destructive/40 aria-[invalid=true]:border-destructive"
+          )}
+        >
           {file && (
-            <div className="h-[150px] relative flex">
+            <div className="h-[150px] relative flex mt-4">
               <div className="h-full w-auto relative">
                 <div
-                  className="w-8 rounded-full aspect-square bg-primary absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer"
+                  className="w-8 bg-background rounded-full aspect-square absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer"
                   onClick={() => setFile(null)}
                 >
                   <IoClose />
@@ -627,7 +655,7 @@ const Chat = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 

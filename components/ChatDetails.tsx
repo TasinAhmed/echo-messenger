@@ -1,7 +1,7 @@
 import { useMainStore } from "@/hooks/useMainStore";
 import clsx from "clsx";
-import Image from "next/image";
 import { useMemo } from "react";
+import { Avatar, AvatarImage } from "./ui/avatar";
 
 const ChatDetails = () => {
   const openDetails = useMainStore((state) => state.openDetails);
@@ -24,13 +24,9 @@ const ChatDetails = () => {
         <div className="grid gap-y-4">
           {[...users.values()].map((u) => (
             <div key={u.id} className="flex items-center gap-x-2">
-              <Image
-                src={u.image}
-                alt="User Image"
-                width={30}
-                height={30}
-                className="rounded-md"
-              />
+              <Avatar>
+                <AvatarImage src={u.image} />
+              </Avatar>
               <div>{u.name}</div>
             </div>
           ))}

@@ -26,6 +26,14 @@ const Dialog = ({
       ref={dialogRef}
       className="outline-0 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 backdrop-blur-2xl w-120 p-6 rounded-xl bg-secondary text-white"
       onClose={onClose}
+      onClick={(e) => {
+        if (
+          dialogRef.current &&
+          !dialogRef.current.contains(e.target as Node)
+        ) {
+          onClose();
+        }
+      }}
     >
       <div className="grid">
         <div className="mb-3 text-gray-300 font-bold">{title}</div>

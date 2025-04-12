@@ -7,10 +7,34 @@ import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import dayjs from "dayjs";
 import { InferSelectModel } from "drizzle-orm";
-import Image from "next/image";
 import { MouseEventHandler, useEffect, useMemo, useRef, useState } from "react";
 import { CiSearch } from "react-icons/ci";
-import { IoClose } from "react-icons/io5";
+import { Card, CardContent, CardHeader } from "./ui/card";
+import { Avatar, AvatarImage } from "./ui/avatar";
+import { Input } from "./ui/input";
+import { IoClose, IoCreateOutline } from "react-icons/io5";
+import { authClient } from "@/utils/auth-client";
+import { FaAngleDown } from "react-icons/fa";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Label } from "./ui/label";
 
 function getRelativeTimeShort(date: Date) {
   const now = dayjs();
@@ -126,7 +150,13 @@ const useConversations = () => {
   return { convoValues, cleanSearch, setSearch, results, search };
 };
 
-const ConversationItem = ({ data }: { data: CustomConvoType }) => {
+const ConversationItem = ({
+  data,
+  currUser,
+}: {
+  data: CustomConvoType;
+  currUser: string | undefined;
+}) => {
   const { selectedConvo, setSelectedConvo } = useMainStore((state) => state);
   const users = useMemo(() => {
     return new Map(data.members.map((m) => [m.memberId, m.user]));
@@ -165,23 +195,14 @@ const ConversationItem = ({ data }: { data: CustomConvoType }) => {
         }
       }}
       className={clsx(
-        "rounded-2xl p-4 cursor-pointer grid grid-cols-[auto_1fr] min-w-0 gap-x-4",
-        selectedConvo?.id === data.id && "bg-secondary"
+        "rounded-md p-4 cursor-pointer grid grid-cols-[auto_1fr] min-w-0 gap-x-4 hover:bg-secondary/80",
+        selectedConvo?.id === data.id && "bg-muted"
       )}
     >
-      <div className="w-15 h-15 relative rounded-xl overflow-hidden">
-        <Image
-          src="/profile.png"
-          alt="Conversation image"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center",
-          }}
-          width={100}
-          height={100}
-        />
+      <div className="w-15 h-15 relative overflow-hidden">
+        <Avatar className="w-full h-full">
+          <AvatarImage src={data.image} />
+        </Avatar>
       </div>
       <div className="whitespace-nowrap overflow-hidden overflow-ellipsis">
         <div className="flex items-center gap-x-4 justify-between">
@@ -193,7 +214,7 @@ const ConversationItem = ({ data }: { data: CustomConvoType }) => {
         <div className="whitespace-nowrap overflow-hidden overflow-ellipsis text-gray-400 text-sm">
           {!lastMsg && "New Conversation"}
           {lastMsg &&
-            `${lastMsgSender}: ${
+            `${lastMsg.senderId === currUser ? "You" : lastMsgSender}: ${
               lastMsg.message
                 ? lastMsg.message
                 : lastMsg.file?.type.startsWith("image")
@@ -222,22 +243,13 @@ const SearchItem = ({
         setSelectedConvo(data);
       }}
       className={clsx(
-        "rounded-2xl p-4 cursor-pointer grid grid-cols-[auto_1fr] min-w-0 gap-x-4"
+        "rounded-2xl p-4 cursor-pointer grid grid-cols-[auto_1fr] min-w-0 gap-x-4 hover:bg-secondary/80"
       )}
     >
       <div className="w-15 h-15 relative rounded-xl overflow-hidden">
-        <Image
-          src="/profile.png"
-          alt="Conversation image"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center",
-          }}
-          width={100}
-          height={100}
-        />
+        <Avatar className="w-full h-full">
+          <AvatarImage src={data.image} />
+        </Avatar>
       </div>
       <div className="whitespace-nowrap overflow-hidden overflow-ellipsis">
         <div className="flex items-center gap-x-4 justify-between">
@@ -256,36 +268,113 @@ const SearchItem = ({
 const Conversations = () => {
   const { convoValues, cleanSearch, setSearch, results, search } =
     useConversations();
+  const { data: session } = authClient.useSession();
+  const router = useRouter();
+  const [createConvo, setCreateConvo] = useState(false);
 
   return (
-    <div className="bg-background p-8 w-115 grid grid-rows-[auto_1fr] rounded-2xl overflow-hidden">
-      <div className="bg-secondary h-14 rounded-2xl mb-4 flex items-center px-4 gap-x-3">
-        <CiSearch size={24} />
-        <div className="relative grow">
-          <input
-            className="outline-0 w-full"
-            placeholder="Search"
+    <Card className="py-8 w-110 grid grid-rows-[auto_1fr] overflow-hidden">
+      <Dialog open={createConvo} onOpenChange={setCreateConvo}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Conversation</DialogTitle>
+            <DialogDescription>
+              Anyone who has this link will be able to view this.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <div className="grid flex-1 gap-2">
+              <Label htmlFor="link" className="sr-only">
+                Link
+              </Label>
+              <Input
+                id="link"
+                defaultValue="https://ui.shadcn.com/docs/installation"
+                readOnly
+              />
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-start">
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Close
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <CardHeader className="px-8  w-full">
+        <div className="flex justify-between items-center mb-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="outline-0">
+              {session && (
+                <div className="flex items-center gap-x-3 cursor-pointer">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={session.user.image!} />
+                  </Avatar>
+                  <div className="font-bold text-lg">
+                    {session.user.name.split(" ")[0]}
+                  </div>
+                  <FaAngleDown />
+                </div>
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="mt-4">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>Profile</DropdownMenuItem>
+              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  authClient.signOut({
+                    fetchOptions: {
+                      onSuccess: () => {
+                        router.push("/auth/login");
+                      },
+                    },
+                  })
+                }
+              >
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <IoCreateOutline
+            onClick={() => setCreateConvo(true)}
+            size={30}
+            className="cursor-pointer"
+          />
+        </div>
+        <div className=" relative">
+          <Input
+            className="px-10 py-6"
+            placeholder="Search conversations..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <CiSearch className="absolute left-0 top-1/2 -translate-y-1/2 ml-3 h-5 w-5 text-muted-foreground" />
           {cleanSearch && (
             <div
               onClick={() => setSearch("")}
-              className="cursor-pointer w-5 aspect-square bg-background rounded-full flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2"
+              className="cursor-pointer w-5 aspect-square bg-background rounded-full flex items-center justify-center absolute right-0 mr-3 top-1/2 -translate-y-1/2"
             >
               <IoClose fill="gray" />
             </div>
           )}
         </div>
-      </div>
-      <div className="h-full max-h-full overflow-y-auto relative overflow-x-hidden">
+      </CardHeader>
+      <CardContent className="mx-8 h-full max-h-full overflow-y-auto relative overflow-x-hidden">
         {cleanSearch && results.length === 0 && (
           <div className="text-center">No results</div>
         )}
         <div className="grid content-start gap-y-2 absolute h-full w-full left-0 top-0 min-h-0 min-w-0">
           {!cleanSearch &&
             convoValues.map((convo) => (
-              <ConversationItem key={convo.id} data={convo} />
+              <ConversationItem
+                key={convo.id}
+                data={convo}
+                currUser={session?.user.id}
+              />
             ))}
           {cleanSearch &&
             results.map((convo) => (
@@ -296,8 +385,8 @@ const Conversations = () => {
               />
             ))}
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
