@@ -1,11 +1,9 @@
 import { variables } from "@/utils/envVars";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@/db/schemas";
 
-const client = postgres(variables.DATABASE_URL!, { prepare: false });
 export const db = drizzle({
-  client,
+  connection: variables.DATABASE_URL!,
   casing: "snake_case",
   schema,
 });
