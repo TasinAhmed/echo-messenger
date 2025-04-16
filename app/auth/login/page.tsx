@@ -14,7 +14,7 @@ import { authClient } from "@/utils/auth-client";
 import clsx from "clsx";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FaGithub, FaGoogle } from "react-icons/fa";
 import { z } from "zod";
 
@@ -30,7 +30,18 @@ const ErrorMsg = ({
   );
 };
 
-export function LoginForm({ className }: { className?: string }) {
+const initialLoginData = {
+  email: "",
+  password: "",
+};
+const initialRegisterData = {
+  email: "",
+  password: "",
+  name: "",
+  confirmPassword: "",
+};
+
+function LoginForm({ className }: { className?: string }) {
   const router = useRouter();
   const registerSchema = z
     .object({
@@ -79,17 +90,6 @@ export function LoginForm({ className }: { className?: string }) {
 
   type RegisterType = z.infer<typeof registerSchema>;
 
-  const initialLoginData = {
-    email: "",
-    password: "",
-  };
-  const initialRegisterData = {
-    email: "",
-    password: "",
-    name: "",
-    confirmPassword: "",
-  };
-
   const [loginData, setLoginData] = useState<LoginType>(initialLoginData);
   const [registerData, setRegisterData] =
     useState<RegisterType>(initialRegisterData);
@@ -103,17 +103,17 @@ export function LoginForm({ className }: { className?: string }) {
     }
   };
 
-  const resetData = () => {
+  const resetData = useCallback(() => {
     setLoginData(initialLoginData);
     setRegisterData(initialRegisterData);
     setLoginErrors(null);
     setRegisterErrors(null);
     setReqError(undefined);
-  };
+  }, []);
 
   useEffect(() => {
     resetData();
-  }, [view]);
+  }, [view, resetData]);
 
   useEffect(() => {
     setLoginErrors(null);
