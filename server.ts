@@ -3,6 +3,7 @@ import next from "next";
 import { Server } from "socket.io";
 import { InferSelectModel } from "drizzle-orm";
 import { message as msg } from "./db/schemas";
+import { CustomConvoType } from "./app/api/conversations/route";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -62,15 +63,26 @@ app.prepare().then(() => {
           if (!connections) continue;
 
           for (const connection of connections) {
-            if (connection !== socket.id) {
-              socketIds.push(connection);
-            }
+            socketIds.push(connection);
           }
         }
         io.to(socketIds).emit("message", message);
         io.to([...socketIds, socket.id]).emit("updateLatestMessage", message);
       }
     );
+
+    socket.on("createConversation", (data: CustomConvoType) => {
+      const socketIds = [];
+      for (const u of data.members.map((u) => u.memberId)) {
+        const connections = UserToSocket.get(u);
+        if (!connections) continue;
+
+        for (const connection of connections) {
+          socketIds.push(connection);
+        }
+      }
+      io.to(socketIds).emit("addConversation", data);
+    });
   });
 
   httpServer

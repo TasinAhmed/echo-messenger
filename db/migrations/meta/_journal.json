@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1744150674870,
-      "tag": "0000_military_random",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1744157078515,
-      "tag": "0001_lame_tusk",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1744169142250,
-      "tag": "0002_windy_shaman",
+      "when": 1744743365802,
+      "tag": "0000_flaky_mystique",
       "breakpoints": true
     }
   ]

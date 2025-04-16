@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
+import { getImage } from "@/utils/getImage";
 
 type Message = Omit<InferSelectModel<typeof message>, "attachment"> & {
   file?: InferSelectModel<typeof file>;
@@ -175,11 +176,6 @@ const useMessages = () => {
     onSuccess: async (data) => {
       await uploadFile(data);
       setInput("");
-      setMsgMap((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(data.id, data);
-        return newMap;
-      });
       socket?.emit("message", {
         message: data,
         userIds: [...usersRef.current.keys()],
@@ -304,7 +300,7 @@ const Message = ({
           {isNew && !isCurrUser && (
             <div className=" absolute top-0 left-0 overflow-hidden w-14 aspect-square">
               <Avatar className="w-full h-full">
-                <AvatarImage src={user.image} />
+                <AvatarImage src={getImage(user.image)} />
               </Avatar>
             </div>
           )}
@@ -425,7 +421,6 @@ const fetchMessages = async (convoId: string): Promise<Message[]> => {
 const sendMessage = async (
   data: InferInsertModel<typeof message> & CustomFileType
 ): Promise<Message> => {
-  console.log(data, "send data");
   const response = await http({
     path: `/messages/${data.conversationId}`,
     method: "POST",
@@ -559,7 +554,7 @@ const Chat = () => {
             {!isFetching && messages.length === 0 && selectedConvo && (
               <div className="grid justify-items-center">
                 <Avatar className="w-[150px] aspect-square h-full">
-                  <AvatarImage src={selectedConvo.image} />
+                  <AvatarImage src={getImage(selectedConvo.image)} />
                 </Avatar>
                 <div className="text-2xl font-bold mt-4 mb-2">
                   {selectedConvo.name}

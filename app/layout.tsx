@@ -1,17 +1,21 @@
-"use client";
-import { useSocket } from "@/hooks/useSocket";
+import { SocketProvider } from "@/components/SocketProvider";
 import "./globals.css";
+
+export const metadata = {
+  title: "echo | Messaging App",
+  description: "Chat instantly with Echo",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  useSocket();
-
   return (
-    <html lang="en">
-      <body className="overflow-x-hidden dark">{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body className="overflow-x-hidden dark">
+        <SocketProvider>{children}</SocketProvider>
+      </body>
     </html>
   );
 }

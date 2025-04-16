@@ -1,9 +1,9 @@
 import { CustomConvoType } from "@/app/api/conversations/route";
-import { message } from "@/db/schemas";
+import { message, user } from "@/db/schemas";
 import { useMainStore } from "@/hooks/useMainStore";
 import { useSocketStore } from "@/hooks/useSocketStore";
 import { http } from "@/utils/http";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import dayjs from "dayjs";
 import { InferSelectModel } from "drizzle-orm";
@@ -14,6 +14,7 @@ import { Avatar, AvatarImage } from "./ui/avatar";
 import { Input } from "./ui/input";
 import { IoClose, IoCreateOutline } from "react-icons/io5";
 import { authClient } from "@/utils/auth-client";
+import { z } from "zod";
 import { FaAngleDown } from "react-icons/fa";
 import {
   DropdownMenu,
@@ -26,15 +27,14 @@ import {
 import { useRouter } from "next/navigation";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Label } from "./ui/label";
+import { FancyMultiSelect } from "./ui/fancy-multi-select";
+import { getImage } from "@/utils/getImage";
 
 function getRelativeTimeShort(date: Date) {
   const now = dayjs();
@@ -57,15 +57,22 @@ function getRelativeTimeShort(date: Date) {
 }
 
 const useConversations = () => {
+  const { data: session } = authClient.useSession();
   const [search, setSearch] = useState("");
   const [cleanSearch, setCleanSearch] = useState("");
   const [results, setResults] = useState<CustomConvoType[]>([]);
+  const [newConvoName, setNewConvoName] = useState("");
+  const [selected, setSelected] = useState<InferSelectModel<typeof user>[]>([]);
   const fetchUserConversations = async (): Promise<CustomConvoType[]> => {
     const response = await http({ path: "/conversations", method: "GET" });
 
     return await response?.json();
   };
+  const [createConvo, setCreateConvo] = useState(false);
   const { socket } = useSocketStore((state) => state);
+  const [errors, setErrors] = useState<z.inferFlattenedErrors<
+    typeof CreateConvoSchema
+  > | null>(null);
 
   const [convoMap, setConvoMap] = useState<Map<string, CustomConvoType>>(
     new Map()
@@ -74,9 +81,59 @@ const useConversations = () => {
 
   const convoMapRef = useRef(convoMap);
 
+  useEffect(() => {
+    setErrors(null);
+  }, [createConvo]);
+
+  const CreateConvoSchema = z.object({
+    name: z
+      .string()
+      .max(20, { message: "Conversation name cannot exceed 20 characters." })
+      .nonempty({ message: "Name is required" }),
+    members: z
+      .array(z.any())
+      .max(4, { message: "Maximum of 5 users allowed." })
+      .min(1, { message: "Must select a user." }),
+  });
+
   const escapeRegExp = (string: string) => {
     return string.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
   };
+
+  const createConversation = async ({
+    name,
+    userIds,
+  }: {
+    name: string;
+    userIds: string[];
+  }) => {
+    console.log(name, userIds);
+    const response = await http({
+      path: "/conversations",
+      method: "POST",
+      body: { name, userIds },
+    });
+
+    return await response?.json();
+  };
+
+  const createConvoMutation = useMutation({
+    mutationFn: () => {
+      if (!session) {
+        throw new Error("User ID is undefined");
+      }
+      return createConversation({
+        name: newConvoName,
+        userIds: [...selected.map((u) => u.id), session.user.id],
+      });
+    },
+    onSuccess: (data) => {
+      socket?.emit("createConversation", data);
+      setNewConvoName("");
+      setSelected([]);
+      setCreateConvo(false);
+    },
+  });
 
   useEffect(() => {
     setCleanSearch(escapeRegExp(search));
@@ -87,8 +144,6 @@ const useConversations = () => {
     const convoData = convoMapRef.current.get(data.conversationId);
 
     if (!convoData) return;
-
-    console.log(data.createdAt, "time");
 
     newMap.delete(data.conversationId);
     newMap = new Map([
@@ -108,13 +163,20 @@ const useConversations = () => {
 
   useEffect(() => {
     socket?.on("updateLatestMessage", updateLatestMessage);
+    socket?.on("addConversation", (data: CustomConvoType) => {
+      setConvoMap((prev) => {
+        const tempArr = Array.from(prev);
+        const newMap = new Map([[data.id, data], ...tempArr]);
+        return newMap;
+      });
+    });
 
     return () => {
       socket?.off("updateLatestMessage", updateLatestMessage);
     };
   }, [socket]);
 
-  const { data } = useQuery({
+  const { data, isSuccess: doneFetch } = useQuery({
     queryKey: ["conversations"],
     queryFn: fetchUserConversations,
   });
@@ -147,7 +209,25 @@ const useConversations = () => {
     );
   }, [cleanSearch, convoMap]);
 
-  return { convoValues, cleanSearch, setSearch, results, search };
+  return {
+    convoValues,
+    cleanSearch,
+    setSearch,
+    results,
+    search,
+    createConvoMutation,
+    selected,
+    setSelected,
+    setNewConvoName,
+    newConvoName,
+    session,
+    createConvo,
+    setCreateConvo,
+    CreateConvoSchema,
+    errors,
+    setErrors,
+    doneFetch,
+  };
 };
 
 const ConversationItem = ({
@@ -201,7 +281,7 @@ const ConversationItem = ({
     >
       <div className="w-15 h-15 relative overflow-hidden">
         <Avatar className="w-full h-full">
-          <AvatarImage src={data.image} />
+          <AvatarImage src={getImage(data.image)} />
         </Avatar>
       </div>
       <div className="whitespace-nowrap overflow-hidden overflow-ellipsis">
@@ -248,7 +328,7 @@ const SearchItem = ({
     >
       <div className="w-15 h-15 relative rounded-xl overflow-hidden">
         <Avatar className="w-full h-full">
-          <AvatarImage src={data.image} />
+          <AvatarImage src={getImage(data.image)} />
         </Avatar>
       </div>
       <div className="whitespace-nowrap overflow-hidden overflow-ellipsis">
@@ -266,40 +346,101 @@ const SearchItem = ({
 };
 
 const Conversations = () => {
-  const { convoValues, cleanSearch, setSearch, results, search } =
-    useConversations();
-  const { data: session } = authClient.useSession();
+  const {
+    convoValues,
+    cleanSearch,
+    setSearch,
+    results,
+    search,
+    selected,
+    setSelected,
+    newConvoName,
+    setNewConvoName,
+    session,
+    createConvoMutation,
+    createConvo,
+    setCreateConvo,
+    CreateConvoSchema,
+    errors,
+    setErrors,
+    doneFetch,
+  } = useConversations();
   const router = useRouter();
-  const [createConvo, setCreateConvo] = useState(false);
+  const fetchUsers = async (): Promise<InferSelectModel<typeof user>[]> => {
+    const response = await http({ path: "/users", method: "GET" });
+
+    return await response?.json();
+  };
+
+  console.log(errors);
+
+  const { data } = useQuery({
+    queryKey: ["users"],
+    queryFn: fetchUsers,
+  });
 
   return (
-    <Card className="py-8 w-110 grid grid-rows-[auto_1fr] overflow-hidden">
+    <Card className="py-8 md:w-80 lg:w-110 grid grid-rows-[auto_1fr] overflow-hidden">
       <Dialog open={createConvo} onOpenChange={setCreateConvo}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Conversation</DialogTitle>
-            <DialogDescription>
-              Anyone who has this link will be able to view this.
-            </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center space-x-2">
-            <div className="grid flex-1 gap-2">
-              <Label htmlFor="link" className="sr-only">
-                Link
-              </Label>
+          <div className="grid gap-2 py-4">
+            <div className="grid items-center mb-4">
               <Input
-                id="link"
-                defaultValue="https://ui.shadcn.com/docs/installation"
-                readOnly
+                id="name"
+                placeholder="Conversation name"
+                value={newConvoName}
+                onChange={(e) => setNewConvoName(e.target.value)}
+                className="mb-2"
               />
+              {errors?.fieldErrors.name && (
+                <div className="text-red-500 text-sm">
+                  {errors.fieldErrors.name[0]}
+                </div>
+              )}
+            </div>
+            <div className="grid items-center">
+              {data && session && (
+                <FancyMultiSelect
+                  data={data}
+                  currUser={session.user.id}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
+              )}
+              {errors?.fieldErrors.members && (
+                <div className="text-red-500 text-sm">
+                  {errors.fieldErrors.members[0]}
+                </div>
+              )}
             </div>
           </div>
-          <DialogFooter className="sm:justify-start">
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">
-                Close
-              </Button>
-            </DialogClose>
+          <DialogFooter>
+            <Button
+              className="cursor-pointer"
+              type="submit"
+              onClick={() => {
+                const result = CreateConvoSchema.safeParse({
+                  name: newConvoName,
+                  members: selected,
+                });
+
+                if (!result.success) {
+                  const err = result.error.flatten();
+                  setErrors(
+                    err as z.inferFlattenedErrors<typeof CreateConvoSchema>
+                  );
+                  return;
+                }
+
+                createConvoMutation.mutate();
+              }}
+              loading={createConvoMutation.isPending}
+            >
+              Create
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -310,7 +451,7 @@ const Conversations = () => {
               {session && (
                 <div className="flex items-center gap-x-3 cursor-pointer">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={session.user.image!} />
+                    <AvatarImage src={getImage(session.user.image!)} />
                   </Avatar>
                   <div className="font-bold text-lg">
                     {session.user.name.split(" ")[0]}
@@ -367,24 +508,38 @@ const Conversations = () => {
         {cleanSearch && results.length === 0 && (
           <div className="text-center">No results</div>
         )}
-        <div className="grid content-start gap-y-2 absolute h-full w-full left-0 top-0 min-h-0 min-w-0">
-          {!cleanSearch &&
-            convoValues.map((convo) => (
-              <ConversationItem
-                key={convo.id}
-                data={convo}
-                currUser={session?.user.id}
-              />
-            ))}
-          {cleanSearch &&
-            results.map((convo) => (
-              <SearchItem
-                onClick={() => setSearch("")}
-                key={convo.id}
-                data={convo}
-              />
-            ))}
-        </div>
+        {doneFetch && convoValues.length > 0 ? (
+          <div className="grid content-start gap-y-2 absolute h-full w-full left-0 top-0 min-h-0 min-w-0">
+            {!cleanSearch &&
+              convoValues.map((convo) => (
+                <ConversationItem
+                  key={convo.id}
+                  data={convo}
+                  currUser={session?.user.id}
+                />
+              ))}
+            {cleanSearch &&
+              results.map((convo) => (
+                <SearchItem
+                  onClick={() => setSearch("")}
+                  key={convo.id}
+                  data={convo}
+                />
+              ))}
+          </div>
+        ) : (
+          doneFetch &&
+          convoValues.length === 0 && (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="font-bold text-lg">No conversations</div>
+                <div className="text-md text-gray-400">
+                  New conversations will appear here.
+                </div>
+              </div>
+            </div>
+          )
+        )}
       </CardContent>
     </Card>
   );

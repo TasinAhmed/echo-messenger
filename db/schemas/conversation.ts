@@ -8,7 +8,7 @@ export const typeEnum = pgEnum("type", ["PRIVATE", "GROUP"]);
 export const conversation = pgTable("conversation", {
   id: uuid().defaultRandom().primaryKey(),
   name: text().notNull(),
-  image: text().notNull(),
+  image: text(),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
 });
