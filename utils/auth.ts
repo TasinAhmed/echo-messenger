@@ -3,8 +3,10 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/db";
 import * as schema from "@/db/schemas";
 import { nextCookies } from "better-auth/next-js";
+import {variables} from "@/utils/envVars"
 
 export const auth = betterAuth({
+  baseURL: variables.BETTER_AUTH_URL,
   emailAndPassword: {
     enabled: true,
   },

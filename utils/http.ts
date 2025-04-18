@@ -1,3 +1,5 @@
+import { variables } from "./envVars";
+
 export const http = async ({
   path,
   method,
@@ -10,7 +12,7 @@ export const http = async ({
   body?: object;
 }) => {
   try {
-    return await fetch(`http://localhost:3000/api${path}`, {
+    return await fetch(`/api${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",

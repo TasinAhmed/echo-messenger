@@ -169,7 +169,7 @@ function LoginForm({ className }: { className?: string }) {
       <Card>
         <CardHeader className="text-center">
           {view === "login" ? (
-            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardTitle className="text-xl">Welcome back!!!</CardTitle>
           ) : (
             <CardTitle className="text-xl">Create an account</CardTitle>
           )}

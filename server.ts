@@ -6,7 +6,7 @@ import { message as msg } from "./db/schemas";
 import { CustomConvoType } from "./app/api/conversations/route";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = process.env.NODE_ENV !== "production" ? "localhost" : 'echo.tasin.ca';
 const port = 3000;
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
@@ -91,6 +91,6 @@ app.prepare().then(() => {
       process.exit(1);
     })
     .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`);
+      console.log(`> Ready on http://localhost:${port}`);
     });
 });

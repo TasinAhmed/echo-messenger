@@ -4,12 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch server.ts",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "next lint",
     "migrate": "drizzle-kit push",
-    "seed": "npx tsx db/seed.ts",
-    "setup": "npm run migrate && npm run seed && npm start"
+    "seed": "npx tsx db/seed.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.1",
