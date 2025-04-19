@@ -1,36 +1,154 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Echo
 
-## Getting Started
+A modern, real-time messaging application built with Next.js and Socket.io.
 
-First, run the development server:
+![Echo Logo](/public/logo.png)
 
+## 📌 Overview
+
+Echo is a feature-rich messaging platform that enables real-time communication between users. Built with modern web technologies, Echo provides a seamless and responsive messaging experience.
+
+**Live Demo:** [http://echo.tasin.ca](http://echo.tasin.ca)
+
+## ✨ Features
+
+- Real-time messaging using Socket.io
+- User authentication and profile management
+- Dark mode support with next-themes
+- Responsive UI built with Tailwind CSS and Headless UI components
+- PostgreSQL database with Drizzle ORM
+- Secure user authentication with bcrypt and better-auth
+
+## 🛠️ Tech Stack
+
+### Frontend
+- React 19
+- Next.js 15
+- TailwindCSS 4
+- Radix UI components
+- Zustand for state management
+- Tanstack React Query for data fetching
+
+### Backend
+- Socket.io for real-time communication
+- Supabase for backend services
+- PostgreSQL with Drizzle ORM
+- Next.js API routes
+
+## 📦 Installation
+
+### Prerequisites
+- Node.js (v18 or later)
+- PostgreSQL
+- npm or yarn
+
+### Setup
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/echo.git
+cd echo
+```
+
+2. Install dependencies
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Create a `.env` file in the root directory with the following variables:
+```
+DATABASE_URL=
+AUTH_DRIZZLE_URL=
+JWT_SECRET=
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+4. Set up the database
+```bash
+npx drizzle-kit push
+```
+
+5. Run the development server
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Echo is deployed at [echo.tasin.ca](https://echo.tasin.ca). You can deploy your own instance using:
 
-## Learn More
+### Vercel
+```bash
+npm run build
+vercel --prod
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Docker
+```bash
+docker build -t echo-app .
+docker run -p 3000:3000 echo-app
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📝 API Documentation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Echo offers a WebSocket API and RESTful endpoints for messaging functionality:
 
-## Deploy on Vercel
+### Socket Events
+- `connection`: Establishes a connection
+- `message`: Send a message
+- `createConversation`: Create conversation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### REST Endpoints
+- `GET /api/messages`: Retrieve message history
+- `POST /api/messages`: Send a new message
+- `GET /api/users`: Get user list
+- `GET /api/conversations`: Get all user conversations
+- `POST /api/conversations`: Create a conversation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 👨‍💻 Development
+
+### Project Structure
+```
+echo/
+├── components/         # React components
+├── lib/                # Utility functions
+├── app/                # Next.js App Router
+├── public/             # Static assets
+├── db/                 # Database schema and migrations
+├── styles/             # Global styles
+└── types/              # TypeScript type definitions
+```
+
+### Commands
+- `npm run dev`: Start development server
+- `npm run build`: Build production bundle
+- `npm run lint`: Run ESLint
+- `npm run migrate`: Run database migrations
+- `npm start`: Start production build
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
