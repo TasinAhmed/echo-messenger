@@ -2,7 +2,7 @@
 
 A modern, real-time messaging application built with Next.js and Socket.io.
 
-![Echo Logo](/public/logo.png)
+![Echo Logo](./public/logo.png)
 
 ## 📌 Overview
 
